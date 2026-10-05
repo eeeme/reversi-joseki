@@ -10,7 +10,6 @@ import { Feedback, useFeedback } from './Feedback'
 interface Props {
   books: Book[]
   items: DueItem[]
-  showLegal: boolean
   onChange: (b: Book) => void
   onBack: () => void
 }
@@ -25,7 +24,7 @@ const nextLabel = (due: number) => {
  * 復習：復習日が来た局面から始めて、その変化を最後まで通して指す。
  * 相手の手は自動（要復習の多い変化を優先）、自分の手番はすべて出題。
  */
-export function Review({ books, items, showLegal, onChange, onBack }: Props) {
+export function Review({ books, items, onChange, onBack }: Props) {
   const [queue, setQueue] = useState<DueItem[]>(items)
   const [qi, setQi] = useState(0)
   const [nodeId, setNodeId] = useState(items[0]?.nodeId ?? '')
@@ -57,6 +56,7 @@ export function Review({ books, items, showLegal, onChange, onBack }: Props) {
     }
     if (!myTurn) {
       const t = window.setTimeout(() => {
+        if (autoPass) fire('pass', `${turnAt(book, node.id) === 0 ? '黒' : '白'}は打てる場所がありません`)
         setMsg('')
         setNodeId(pickWeighted(node.children, w))
       }, 650)
@@ -157,11 +157,10 @@ export function Review({ books, items, showLegal, onChange, onBack }: Props) {
             pos={st.pos}
             last={st.last}
             hint={hint}
-            showLegal={showLegal}
-            interactive={myTurn && !lineDone}
+                interactive={myTurn && !lineDone}
             onMove={onMove}
           />
-          <Feedback kind={fb.kind} seq={fb.seq} />
+          <Feedback kind={fb.kind} seq={fb.seq} label={fb.label} />
         </div>
       </div>
       <Tour

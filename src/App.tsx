@@ -21,7 +21,6 @@ import { MiniBoard } from './ui/MiniBoard'
 import { depthOf, movesTo, positionAt } from './book/book'
 import { toPosString } from './reversi/core'
 import { MetaSheet, TagSheet, metaLine } from './ui/Forms'
-import { loadSettings, saveSettings } from './settings'
 
 interface Origin { bookId: string; nodeId: string }
 /** 検索結果から開いた時の情報（戻り先・マージ元） */
@@ -45,7 +44,6 @@ export default function App() {
   const [rev, setRev] = useState(0)
   const [toastMsg, setToastMsg] = useState('')
   const [appSheet, setAppSheet] = useState<{ title: string; items: SheetItem[] } | null>(null)
-  const [settings, setSettings] = useState(loadSettings)
 
   useEffect(() => {
     ;(async () => {
@@ -148,7 +146,6 @@ export default function App() {
         onImport={() => setScreen({ kind: 'import', target: book.id, back: screen })}
         onEditPosition={(pos) => setScreen({ kind: 'editor', pos, back: screen })}
         onSearch={(pos) => setScreen({ kind: 'search', pos, back: screen, origin: { bookId: book.id, nodeId: screen.nodeId } })}
-        showLegal={settings.showLegal}
         toast={toast}
       />
     )
@@ -159,7 +156,6 @@ export default function App() {
         key={`${book.id}-${screen.nodeId}`}
         book={book}
         startNode={screen.nodeId}
-        showLegal={settings.showLegal}
         onChange={() => touch(book)}
         onBack={() => setScreen({ kind: 'explore', bookId: book.id, nodeId: screen.nodeId })}
       />
@@ -178,7 +174,7 @@ export default function App() {
   } else if (screen.kind === 'support') {
     body = <Support onBack={() => setScreen({ kind: 'home' })} toast={toast} />
   } else if (screen.kind === 'review') {
-    body = <Review books={books} items={screen.items} showLegal={settings.showLegal} onChange={touch} onBack={() => setScreen({ kind: 'home' })} />
+    body = <Review books={books} items={screen.items} onChange={touch} onBack={() => setScreen({ kind: 'home' })} />
   } else if (screen.kind === 'search') {
     body = (
       <Search
@@ -228,18 +224,6 @@ export default function App() {
         onReview={(items) => setScreen({ kind: 'review', items })}
         onImport={() => setScreen({ kind: 'import', back: { kind: 'home' } })}
         onSupport={() => setScreen({ kind: 'support' })}
-        onSettings={() => setAppSheet({
-          title: '設定',
-          items: [{
-            label: `打てる場所に点を出す：${settings.showLegal ? 'オン' : 'オフ'}`,
-            onClick: () => {
-              const n = { ...settings, showLegal: !settings.showLegal }
-              saveSettings(n)
-              setSettings(n)
-              toast(n.showLegal ? '打てる場所に点を出します' : '打てる場所の点を消しました')
-            },
-          }],
-        })}
         onChangeBook={touch}
         onDeleteBook={async (b) => {
           if (!confirm(`「${b.name}」を削除しますか？（元に戻せません）`)) return
@@ -309,7 +293,6 @@ interface HomeProps {
   onToggleReview: (f: Folder) => void
   onDeleteFolder: (f: Folder) => void
   onSupport: () => void
-  onSettings: () => void
 }
 
 function Home(p: HomeProps) {
@@ -382,9 +365,6 @@ function Home(p: HomeProps) {
         <header className="hero">
           <h1>定石帳</h1>
           <span className="hero-tools">
-          <button className="icon-btn search-btn" onClick={p.onSettings} aria-label="設定">
-            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="1.8" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
-          </button>
           <button className="icon-btn search-btn" onClick={p.onSupport} aria-label="応援する">
             <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" /></svg>
           </button>

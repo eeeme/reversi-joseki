@@ -11,14 +11,13 @@ import { Feedback, useFeedback } from './Feedback'
 interface Props {
   book: Book
   startNode: string
-  showLegal: boolean
   onChange: () => void
   onBack: () => void
 }
 
 type Phase = 'setup' | 'run' | 'done'
 
-export function Drill({ book, startNode, showLegal, onChange, onBack }: Props) {
+export function Drill({ book, startNode, onChange, onBack }: Props) {
   const [phase, setPhase] = useState<Phase>('setup')
   const [side, setSide] = useState<0 | 1>(0)
   const [fromHere, setFromHere] = useState(startNode !== book.rootId)
@@ -56,7 +55,8 @@ export function Drill({ book, startNode, showLegal, onChange, onBack }: Props) {
     if (!myTurn) {
       timer.current = window.setTimeout(() => {
         const next = pickWeighted(node.children, w)
-        setMsg(autoPass ? `${turnAt(book, nodeId) === 0 ? '黒' : '白'}はパス` : '')
+        if (autoPass) fire('pass', `${turnAt(book, nodeId) === 0 ? '黒' : '白'}は打てる場所がありません`)
+        setMsg('')
         setNodeId(next)
       }, blind ? 900 : 550)
       return () => window.clearTimeout(timer.current)
@@ -168,12 +168,11 @@ export function Drill({ book, startNode, showLegal, onChange, onBack }: Props) {
         pos={pos}
         last={last}
         hint={hint}
-        showLegal={showLegal}
         hideStones={blind && phase === 'run'}
         interactive={phase === 'run' && myTurn}
         onMove={onMove}
       />
-        <Feedback kind={fb.kind} seq={fb.seq} />
+        <Feedback kind={fb.kind} seq={fb.seq} label={fb.label} />
       </div>
       <section className="panel drill-status">
         <p className="last-move">直前：<Lbl text={lastLabel} /></p>

@@ -406,3 +406,8 @@ select, input:not([type=file]), .kifu-input { width: 100%; min-height: 44px; bac
 .drawer-body .row.gap { flex-wrap: wrap; }
 .drawer-body .chip { white-space: nowrap; }
 .nav-now { align-items: center; }
+
+/* パス：盤の上に大きく出して自動で次の手番へ */
+.fb-pass .fb-mark { color: var(--text); font-size: min(22vw, 96px); letter-spacing: .15em; animation-duration: 1.1s; }
+.fb-pass .fb-ring { border-color: var(--line-strong); }
+.fb-sub { position: absolute; bottom: 22%; font-size: 13px; color: var(--muted); background: rgba(16,17,20,.82); padding: 4px 12px; border-radius: 10px; animation: fb-pop 1.1s ease forwards; }

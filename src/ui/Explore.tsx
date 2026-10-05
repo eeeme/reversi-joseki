@@ -1,4 +1,5 @@
 import { Lbl } from './Lbl'
+import { Feedback, useFeedback } from './Feedback'
 import { useMemo, useState } from 'react'
 import { Tour } from './Tour'
 import { type Move, PASS, applyMove, canonicalKey, isOver, mustPass, strToMove, toPosString } from '../reversi/core'
@@ -31,11 +32,10 @@ interface Props {
   /** 一致した局面から開いた時だけ：検索元とマージ */
   onMerge?: () => void
   stats: StatsIndex
-  showLegal: boolean
   toast: (s: string) => void
 }
 
-export function Explore({ book, rev, nodeId, setNodeId, onChange, onBack, onDrill, onImport, onEditPosition, onSearch, fromSearch, onMerge, stats, showLegal, toast }: Props) {
+export function Explore({ book, rev, nodeId, setNodeId, onChange, onBack, onDrill, onImport, onEditPosition, onSearch, fromSearch, onMerge, stats, toast }: Props) {
   // 空の本は最初から編集モード
   const [edit, setEdit] = useState(() => book.nodes[book.rootId].children.length === 0)
   const [flipped, setFlipped] = useState(false)
@@ -58,8 +58,34 @@ export function Explore({ book, rev, nodeId, setNodeId, onChange, onBack, onDril
     const after = applyMove(pos, strToMove(mv))
     return { id: c, move: mv, label: moveLabelWithColor(pos, strToMove(mv)), name: openingAt(after) }
   })
-  const passNow = mustPass(pos)
   const over = isOver(pos)
+  const { fb, fire } = useFeedback()
+
+  /**
+   * その局面へ進む。打てる場所がない手番なら、パスを自動で挟んで次の手番まで進め、エフェクトを出す。
+   * 編集中で本にまだパスが無ければ、パスを追加する。
+   */
+  const go = (id: string) => {
+    const p = positionAt(book, id).pos
+    if (mustPass(p)) {
+      let passId = findChild(book, id, 'pass')
+      if (!passId && edit) {
+        passId = addChild(book, id, PASS).id
+        onChange()
+      }
+      if (passId) {
+        fire('pass', `${p.turn === 0 ? '黒' : '白'}は打てる場所がありません`)
+        return setNodeId(passId)
+      }
+    }
+    setNodeId(id)
+  }
+  /** 1手戻る。パスの直後なら、パスも一緒に戻す */
+  const back = () => {
+    if (!node.parent) return
+    const p = book.nodes[node.parent]
+    setNodeId(p.move === 'pass' && p.parent ? p.parent : p.id)
+  }
   // 全部の本の集計（2局未満の局面は null）
   const moveStats = useMemo(() => nextMoveStats(stats, pos), [stats, pos])
   const statOf = (mv: string) => moveStats?.find((s) => s.move === mv)
@@ -89,7 +115,7 @@ export function Explore({ book, rev, nodeId, setNodeId, onChange, onBack, onDril
     const exist = findChild(book, node.id, move)
     if (exist) {
       if (rotated) toast('初手は f5 にそろえて表示します')
-      return setNodeId(exist)
+      return go(exist)
     }
     if (!edit) {
       toast('定石にない手')
@@ -98,10 +124,10 @@ export function Explore({ book, rev, nodeId, setNodeId, onChange, onBack, onDril
     const r = addChild(book, node.id, strToMove(move))
     if (rotated) toast('初手は f5 にそろえて記録します')
     onChange()
-    setNodeId(r.id)
+    go(r.id)
   }
 
-  const goFirstChild = () => node.children[0] && setNodeId(node.children[0])
+  const goFirstChild = () => node.children[0] && go(node.children[0])
   const goLeaf = () => {
     let cur = node
     while (cur.children[0]) cur = book.nodes[cur.children[0]]
@@ -127,18 +153,20 @@ export function Explore({ book, rev, nodeId, setNodeId, onChange, onBack, onDril
       {metaLine(book.meta) && <p className="meta-line">{metaLine(book.meta)}</p>}
 
       <div className="stage">
-      <Board
-        pos={pos}
-        flipped={flipped}
-        last={last}
-        showLegal={showLegal}
-        onMove={onMove}
-        onTapSide={edit ? undefined : (side) => (side === 'right' ? goFirstChild() : node.parent && setNodeId(node.parent))}
-      />
+      <div className="board-fb">
+        <Board
+          pos={pos}
+          flipped={flipped}
+          last={last}
+          onMove={onMove}
+          onTapSide={edit ? undefined : (side) => (side === 'right' ? goFirstChild() : back())}
+        />
+        <Feedback kind={fb.kind} seq={fb.seq} label={fb.label} />
+      </div>
 
       <div className="nav">
         <button className="btn" onClick={() => setNodeId(book.rootId)} aria-label="最初へ">⏮</button>
-        <button className="btn" onClick={() => node.parent && setNodeId(node.parent)} aria-label="1手戻る">◀</button>
+        <button className="btn" onClick={back} aria-label="1手戻る">◀</button>
         <span className="nav-now"><Lbl text={nowLabel} /><small>{path.length - 1}手目</small></span>
         <button className="btn" onClick={goFirstChild} aria-label="本線で1手進む">▶</button>
         <button className="btn" onClick={goLeaf} aria-label="本線の最後へ">⏭</button>
@@ -172,7 +200,7 @@ export function Explore({ book, rev, nodeId, setNodeId, onChange, onBack, onDril
           </p>
           <div className="choices hscroll">
             {children.map((c, i) => (
-              <button key={c.id} className={`choice ${i === 0 ? 'main' : ''}`} onClick={() => setNodeId(c.id)}>
+              <button key={c.id} className={`choice ${i === 0 ? 'main' : ''}`} onClick={() => go(c.id)}>
                 <span className="choice-move">
                   <Lbl text={c.label} />
                   {i === 0 && children.length > 1 && <small>本線</small>}
@@ -181,20 +209,6 @@ export function Explore({ book, rev, nodeId, setNodeId, onChange, onBack, onDril
                 <span className="choice-stat">{statText(c.move) || '\u00a0'}</span>
               </button>
             ))}
-            {passNow && children.length === 0 && (
-              <button
-                className="choice other"
-                onClick={() => {
-                  if (!edit) return toast('✏でパスを追加')
-                  const r = addChild(book, node.id, PASS)
-                  onChange()
-                  setNodeId(r.id)
-                }}
-              >
-                <span className="choice-move"><Lbl text={moveLabelWithColor(pos, PASS)} /></span>
-                <span className="choice-stat">打てる場所がありません</span>
-              </button>
-            )}
             {others.map((s) => (
               <button
                 key={s.move}
@@ -203,7 +217,7 @@ export function Explore({ book, rev, nodeId, setNodeId, onChange, onBack, onDril
                   if (!edit) return toast('✏で追加')
                   const r = addChild(book, node.id, strToMove(s.move))
                   onChange()
-                  setNodeId(r.id)
+                  go(r.id)
                 }}
               >
                 <span className="choice-move"><Lbl text={moveLabelWithColor(pos, strToMove(s.move))} /></span>

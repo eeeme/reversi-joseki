@@ -10,8 +10,6 @@ interface Props {
   /** 石を隠す（脳内盤）。直前の手のマスだけ光らせる */
   hideStones?: boolean
   interactive?: boolean
-  /** 打てるマスに薄い点を出す */
-  showLegal?: boolean
   onMove?: (m: Move) => void
   /** 参照用：指定すると盤のタップは手ではなく、盤の左右どちら側かを渡す */
   onTapSide?: (side: 'left' | 'right') => void
@@ -21,7 +19,7 @@ interface Props {
 
 const FILES = 'abcdefgh'
 
-export function Board({ pos, flipped = false, last, hint, hideStones, interactive = true, showLegal = true, onMove, onTapSide, onEditSquare }: Props) {
+export function Board({ pos, flipped = false, last, hint, hideStones, interactive = true, onMove, onTapSide, onEditSquare }: Props) {
   const legal = useMemo(() => new Set(legalMoves(pos)), [pos])
   const { black, white } = countStones(pos)
   const order = useMemo(() => {
@@ -31,7 +29,8 @@ export function Board({ pos, flipped = false, last, hint, hideStones, interactiv
   }, [flipped])
   const cols = flipped ? [...FILES].reverse() : [...FILES]
   const rows = flipped ? [8, 7, 6, 5, 4, 3, 2, 1] : [1, 2, 3, 4, 5, 6, 7, 8]
-  const dotsOn = !onEditSquare && !onTapSide && interactive && showLegal && !hideStones
+  // 打てる場所は常に光らせる（石を隠す練習中と盤面編集だけは出さない）
+  const dotsOn = !onEditSquare && !hideStones
 
   const tap = (sq: number, e: React.MouseEvent<HTMLButtonElement>) => {
     if (onEditSquare) return onEditSquare(sq)

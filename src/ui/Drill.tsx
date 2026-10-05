@@ -160,7 +160,7 @@ export function Drill({ book, startNode, onChange, onBack }: Props) {
     <div className="screen">
       <header className="bar">
         <button className="btn ghost" onClick={onBack}>‹ 終了</button>
-        <h1 className="bar-title">練習 <small>{side === 0 ? '●黒' : '○白'}</small></h1>
+        <h1 className="bar-title">練習 <small><Lbl text={side === 0 ? '● 黒' : '○ 白'} /></small></h1>
         <span className="tally">○{tally.ok} ×{tally.ng}</span>
       </header>
       <div className="board-fb">
